@@ -19,16 +19,25 @@ type MapStorage struct {
 	byStatusesIndex map[storageTypes.UrlExplorationStatus]urlSet
 }
 
+// TODO: add mutex to control flow here, since this is a single global resource instead of an external one like a true database
+// TODO: performance will be impacted, but this is more of a mock anyway
+
 // WriteUrl see storageTypes.StorageInterface
 func (storage MapStorage) WriteUrl(url string, explorationStatus storageTypes.UrlExplorationStatus) (storageTypes.UrlRecord, bool) {
-	storage.byUrlsIndex[url] = storageTypes.UrlRecord{Url: url, Status: explorationStatus}
+	record := storageTypes.UrlRecord{Url: url, Status: explorationStatus}
+
+	storage.byUrlsIndex[url] = record
+
+	if _, ok := storage.byStatusesIndex[explorationStatus]; !ok {
+		storage.byStatusesIndex[explorationStatus] = map[string]bool{}
+	}
 	storage.byStatusesIndex[explorationStatus][url] = true
 
 	return storage.byUrlsIndex[url], true
 }
 
-// GetUrls see storageTypes.StorageInterface
-func (storage MapStorage) GetUrls(explorationStatus storageTypes.UrlExplorationStatus, limit ...int) []storageTypes.UrlRecord {
+// GetUrlsByStatus see storageTypes.StorageInterface
+func (storage MapStorage) GetUrlsByStatus(explorationStatus storageTypes.UrlExplorationStatus, limit ...int) []storageTypes.UrlRecord {
 	numberOfUrls := len(storage.byStatusesIndex[explorationStatus])
 	if len(limit) > 0 {
 		numberOfUrls = utilities.Min([]int{limit[0], len(storage.byStatusesIndex[explorationStatus])}...)

@@ -1,6 +1,8 @@
 package utilities
 
-// TODO: refactor this as a generic
+// Min TODO: refactor this as a generic
+// Min defines our own implementation of Min since, apparently, golang does not offer its own builtin
+// Accepts an arbitrary amount of int values through variadic argument.
 func Min(values ...int) int {
 	if len(values) == 0 {
 		panic("Minimum value can only be computed on non empty slices/arrays")

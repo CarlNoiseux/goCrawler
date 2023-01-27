@@ -20,7 +20,8 @@ type UrlRecord struct {
 // StorageInterface definition for common interface between different storage solutions
 type StorageInterface interface {
 	// WriteUrl interface method to insert an url into storage
-	WriteUrl(url, explorationStatus UrlExplorationStatus) (UrlRecord, bool)
+	//WriteUrl(url string, uncharted UrlExplorationStatus)
+	WriteUrl(url string, explorationStatus UrlExplorationStatus) (UrlRecord, bool)
 	// GetUrlsByStatus interface method to retrieve a given number of urls of a given status
 	GetUrlsByStatus(explorationStatus UrlExplorationStatus, limit ...int) []UrlRecord
 	// UpdateUrlsStatuses interface method to update status of a given list of urls
