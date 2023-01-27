@@ -2,11 +2,12 @@ package endpoints
 
 import (
 	"fmt"
+	"goCrawler/context"
 	"goCrawler/storage/storageTypes"
 	"net/http"
 )
 
-func Seed(writer http.ResponseWriter, req *http.Request, storageInterface *storageTypes.StorageInterface) {
+func Seed(ctx context.Context, writer http.ResponseWriter, req *http.Request) {
 	url := req.URL.Query().Get("url")
 
 	//var arr []string
@@ -16,7 +17,7 @@ func Seed(writer http.ResponseWriter, req *http.Request, storageInterface *stora
 		return
 	}
 
-	(*storageInterface).WriteUrl(url, storageTypes.Uncharted)
+	(*ctx.Storage).WriteUrl(url, storageTypes.Uncharted)
 
 	fmt.Fprintf(writer, "Added %s url to uncharted frontier.", url)
 }
