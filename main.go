@@ -11,6 +11,7 @@ import (
 	"goCrawler/endpoints"
 	"goCrawler/parser"
 	"goCrawler/storage"
+	"goCrawler/storage/storageTypes"
 )
 
 func main() {
@@ -29,7 +30,9 @@ func main() {
 		endpoints.Seed(ctx, w, r)
 	})
 
-	go parser.ParsePageUrls(ctx, "https://www.google.com/")
+	seedUrl := "https://www.lapresse.ca/"
+	(*storagePtr).WriteUrl(seedUrl, storageTypes.Uncharted)
+	go parser.ParsePageUrls(ctx, seedUrl)
 
 	log.Fatal(http.ListenAndServe("localhost:8000", mux))
 }

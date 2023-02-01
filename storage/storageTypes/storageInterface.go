@@ -27,4 +27,7 @@ type StorageInterface interface {
 
 	// UpdateUrlsStatuses interface method to update status of a given list of urls
 	UpdateUrlsStatuses(urls []string, newExplorationStatus UrlExplorationStatus) ([]*UrlRecord, []string)
+
+	// UpdateUrlStatus interface method to update status of a given list of urls
+	UpdateUrlStatus(urls string, newExplorationStatus UrlExplorationStatus) (*UrlRecord, error)
 }

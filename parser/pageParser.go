@@ -30,9 +30,10 @@ func ParsePageUrls(ctx context.Context, url string) {
 	// Filter links (remove already explored, duplicates, etc..)
 
 	// Add links to storage
-	for _, url := range urls {
-		(*ctx.Storage).WriteUrl(url, storageTypes.Uncharted)
+	for _, foundUrl := range urls {
+		(*ctx.Storage).WriteUrl(foundUrl, storageTypes.Uncharted)
 	}
+	(*ctx.Storage).UpdateUrlStatus(url, storageTypes.Charted)
 
 	return
 }
@@ -61,7 +62,7 @@ func parsePage(resp *http.Response) (*html.Node, error) {
 }
 
 func extractUrls(nodes *html.Node, breathFirst bool, resp *http.Response) []string {
-	var links []string
+	links := make(map[string]bool)
 	visitNode := func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			for _, a := range n.Attr {
@@ -74,7 +75,7 @@ func extractUrls(nodes *html.Node, breathFirst bool, resp *http.Response) []stri
 					continue // ignore bad URLs
 				}
 
-				links = append(links, link.String())
+				links[link.String()] = true
 			}
 		}
 	}
@@ -85,14 +86,21 @@ func extractUrls(nodes *html.Node, breathFirst bool, resp *http.Response) []stri
 		depthFirstTraversal(nodes, visitNode)
 	}
 
-	return links
+	urls := make([]string, len(links))
+	i := 0
+	for k := range links {
+		urls[i] = k
+		i++
+	}
+
+	return urls
 }
 
 func breadthFirstTraversal(node *html.Node, nodeParser func(n *html.Node)) {
-	// TODO: Not ideal, using a slice, underlying array will be as long as there are nodes in the tree. would need a more intelligent queue
+	// TODO: Not ideal, using a slice, underlying array will be resized many times, potentially as long as there are nodes in the tree. would need a more intelligent queue
 	children := make([]*html.Node, 0)
 	for c := node; c != nil; {
-		nodeParser(node)
+		nodeParser(c)
 		if c.FirstChild != nil {
 			children = append(children, c.FirstChild)
 		}
@@ -100,11 +108,14 @@ func breadthFirstTraversal(node *html.Node, nodeParser func(n *html.Node)) {
 		if c.NextSibling != nil {
 			c = c.NextSibling
 		} else {
-			c = children[0]
-			children = children[1:]
+			if len(children) > 0 {
+				c = children[0]
+				children = children[1:]
+			} else {
+				c = nil
+			}
 		}
 	}
-
 }
 
 func depthFirstTraversal(node *html.Node, nodeParser func(n *html.Node)) {
