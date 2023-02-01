@@ -6,9 +6,10 @@ package storageTypes
 type UrlExplorationStatus string
 
 const (
-	Uncharted UrlExplorationStatus = "uncharted"
-	Charting  UrlExplorationStatus = "charting"
-	Charted   UrlExplorationStatus = "charted"
+	Uncharted   UrlExplorationStatus = "uncharted"
+	Charting    UrlExplorationStatus = "charting"
+	Charted     UrlExplorationStatus = "charted"
+	Unchartable UrlExplorationStatus = "Unchartable"
 )
 
 // UrlRecord definition for a record from the storage in memory
@@ -19,15 +20,18 @@ type UrlRecord struct {
 
 // StorageInterface definition for common interface between different storage solutions
 type StorageInterface interface {
-	// WriteUrl interface method to insert an url into storage
-	WriteUrl(url string, explorationStatus UrlExplorationStatus) (UrlRecord, bool)
+	// AddUrl interface method to insert an url into storage
+	AddUrl(url string, explorationStatus UrlExplorationStatus) (*UrlRecord, bool)
 
 	// GetUrlsByStatus interface method to retrieve a given number of urls of a given status
-	GetUrlsByStatus(explorationStatus UrlExplorationStatus, limit ...int) []UrlRecord
+	GetUrlsByStatus(explorationStatus UrlExplorationStatus, limit ...int) []*UrlRecord
 
 	// UpdateUrlsStatuses interface method to update status of a given list of urls
 	UpdateUrlsStatuses(urls []string, newExplorationStatus UrlExplorationStatus) ([]*UrlRecord, []string)
 
 	// UpdateUrlStatus interface method to update status of a given list of urls
 	UpdateUrlStatus(urls string, newExplorationStatus UrlExplorationStatus) (*UrlRecord, error)
+
+	// UrlsExist method to check if some urls already exist within the storage
+	UrlsExist(urls []string) (found []*UrlRecord, missing []string)
 }

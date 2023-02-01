@@ -5,18 +5,47 @@ import (
 	"goCrawler/context"
 	"goCrawler/storage/storageTypes"
 	"golang.org/x/net/html"
+	"log"
 	"net/http"
+	"os"
 	//"goCrawler/storage/storageTypes"
 )
 
-func ParsePageUrls(ctx context.Context, url string) {
-	// Retrieve page
+func ParsePageUrls(ctx context.Context, urls chan string) {
+	for {
+		url, ok := <-urls
+		if !ok {
+			log.Println("urls channel closed, terminating parser goroutine")
+			return
+		}
+
+		parsePageUrl(ctx, url)
+	}
+}
+
+func parsePageUrl(ctx context.Context, url string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered a panic in parsePageUrl", r)
+			(*ctx.Storage).UpdateUrlStatus(url, storageTypes.Unchartable)
+		}
+	}()
+
+	panic("whatever")
+
+	log.Printf("parsing url: %s", url)
+
 	resp, err := retrievePage(url)
 	if err != nil {
 		(*ctx.Storage).UpdateUrlsStatuses([]string{url}, storageTypes.Charted)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not close request body")
+		}
+	}()
 
 	// Parse retrieved page
 	nodes, err := parsePage(resp)
@@ -28,14 +57,14 @@ func ParsePageUrls(ctx context.Context, url string) {
 	urls := extractUrls(nodes, true, resp)
 
 	// Filter links (remove already explored, duplicates, etc..)
+	_, missing := (*ctx.Storage).UrlsExist(urls)
+	log.Printf("Found %d new urls while crawling %s", len(url), url)
 
 	// Add links to storage
-	for _, foundUrl := range urls {
-		(*ctx.Storage).WriteUrl(foundUrl, storageTypes.Uncharted)
+	for _, foundUrl := range missing {
+		(*ctx.Storage).AddUrl(foundUrl, storageTypes.Uncharted)
 	}
 	(*ctx.Storage).UpdateUrlStatus(url, storageTypes.Charted)
-
-	return
 }
 
 func retrievePage(url string) (*http.Response, error) {

@@ -2,13 +2,21 @@
 
 package storage
 
-import "goCrawler/storage/storageTypes"
+import (
+	"goCrawler/storage/storageTypes"
+	"sync"
+)
 
-// GetStorage currently systematically returns MapStorage instance since it's the only type currently supported.
-func GetStorage() *storageTypes.StorageInterface {
-	var storagePtr storageTypes.StorageInterface
+// GetStoragePtr currently systematically returns MapStorage instance since it's the only type currently supported.
+func GetStoragePtr() *storageTypes.StorageInterface {
+	var storage storageTypes.StorageInterface
 
-	storagePtr = MapStorage{byUrlsIndex: map[string]storageTypes.UrlRecord{}, byStatusesIndex: map[storageTypes.UrlExplorationStatus]urlSet{}}
+	storage = &MapStorage{
+		//urls:            make([]storageTypes.UrlRecord, 0),
+		byUrlsIndex:     map[string]*storageTypes.UrlRecord{},
+		byStatusesIndex: map[storageTypes.UrlExplorationStatus]urlSet{},
+		mutex:           &sync.Mutex{},
+	}
 
-	return &storagePtr
+	return &storage
 }

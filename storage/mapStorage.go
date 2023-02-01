@@ -7,6 +7,7 @@ package storage
 import (
 	"errors"
 	"goCrawler/storage/storageTypes"
+	"sync"
 )
 import "goCrawler/utilities"
 
@@ -17,43 +18,37 @@ type urlSet map[string]bool
 // modelled with two "indices" so make for easier retrieval through interface methods, at the cost of insertion time (
 // similarly to a database indices).
 type MapStorage struct {
-	//"Primary" key
-	byUrlsIndex     map[string]storageTypes.UrlRecord
+	mutex *sync.Mutex
+
+	// "Primary" key
+	byUrlsIndex map[string]*storageTypes.UrlRecord
+
+	// Index by status, to facilitate searches
 	byStatusesIndex map[storageTypes.UrlExplorationStatus]urlSet
 }
 
-// TODO: add mutex to control flow here, since this is a single global resource instead of an external one like a true database
-// TODO: performance will be impacted, but this is more of a mock anyway
-
-func (storage MapStorage) init() {
-	if storage.byUrlsIndex == nil {
-		storage.byUrlsIndex = make(map[string]storageTypes.UrlRecord)
-	}
-
-	if storage.byStatusesIndex == nil {
-		storage.byStatusesIndex = make(map[storageTypes.UrlExplorationStatus]urlSet)
-	}
-}
-
-// WriteUrl see storageTypes.StorageInterface
-func (storage MapStorage) WriteUrl(url string, explorationStatus storageTypes.UrlExplorationStatus) (storageTypes.UrlRecord, bool) {
-	storage.init()
+// AddUrl see storageTypes.StorageInterface
+func (storage *MapStorage) AddUrl(url string, explorationStatus storageTypes.UrlExplorationStatus) (*storageTypes.UrlRecord, bool) {
+	storage.mutex.Lock()
 
 	record := storageTypes.UrlRecord{Url: url, Status: explorationStatus}
+	//storage.urls = append(storage.urls, record)
 
-	storage.byUrlsIndex[url] = record
+	storage.byUrlsIndex[url] = &record
 
 	if _, ok := storage.byStatusesIndex[explorationStatus]; !ok {
 		storage.byStatusesIndex[explorationStatus] = make(map[string]bool)
 	}
 	storage.byStatusesIndex[explorationStatus][url] = true
 
+	storage.mutex.Unlock()
+
 	return storage.byUrlsIndex[url], true
 }
 
 // GetUrlsByStatus see storageTypes.StorageInterface
-func (storage MapStorage) GetUrlsByStatus(explorationStatus storageTypes.UrlExplorationStatus, limit ...int) []storageTypes.UrlRecord {
-	storage.init()
+func (storage *MapStorage) GetUrlsByStatus(explorationStatus storageTypes.UrlExplorationStatus, limit ...int) []*storageTypes.UrlRecord {
+	storage.mutex.Lock()
 
 	numberOfUrls := len(storage.byStatusesIndex[explorationStatus])
 	if len(limit) > 0 {
@@ -62,21 +57,24 @@ func (storage MapStorage) GetUrlsByStatus(explorationStatus storageTypes.UrlExpl
 
 	// This will do non-deterministic access, mirroring somewhat what would happen if we queried a database, supposing
 	// indices change through time
-	records := make([]storageTypes.UrlRecord, numberOfUrls)
+	records := make([]*storageTypes.UrlRecord, numberOfUrls)
 	for k := range storage.byStatusesIndex[explorationStatus] {
-		records = append(records, storage.byUrlsIndex[k])
+		record := storage.byUrlsIndex[k]
+		records = append(records, record)
 		numberOfUrls -= 1
 		if numberOfUrls == 0 {
 			break
 		}
 	}
 
+	storage.mutex.Unlock()
+
 	return records
 }
 
 // UpdateUrlsStatuses see storageTypes.StorageInterface
-func (storage MapStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus storageTypes.UrlExplorationStatus) ([]*storageTypes.UrlRecord, []string) {
-	storage.init()
+func (storage *MapStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus storageTypes.UrlExplorationStatus) ([]*storageTypes.UrlRecord, []string) {
+	storage.mutex.Lock()
 
 	missing := make([]string, 0)
 	updated := make([]*storageTypes.UrlRecord, len(urls))
@@ -93,7 +91,9 @@ func (storage MapStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus
 
 			// Update records with new status
 			urlRecord.Status = newExplorationStatus
-			updated = append(updated, &urlRecord)
+			storage.byUrlsIndex[url] = urlRecord
+
+			updated = append(updated, urlRecord)
 
 		} else {
 			// Accumulate missing url
@@ -101,13 +101,13 @@ func (storage MapStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus
 		}
 	}
 
+	storage.mutex.Unlock()
+
 	return updated, missing
 }
 
 // UpdateUrlStatus see storageTypes.StorageInterface
-func (storage MapStorage) UpdateUrlStatus(url string, newExplorationStatus storageTypes.UrlExplorationStatus) (*storageTypes.UrlRecord, error) {
-	storage.init()
-
+func (storage *MapStorage) UpdateUrlStatus(url string, newExplorationStatus storageTypes.UrlExplorationStatus) (*storageTypes.UrlRecord, error) {
 	records, err := storage.UpdateUrlsStatuses([]string{url}, newExplorationStatus)
 
 	if len(err) > 0 {
@@ -115,4 +115,19 @@ func (storage MapStorage) UpdateUrlStatus(url string, newExplorationStatus stora
 	}
 
 	return records[0], nil
+}
+
+// UrlsExist see storageTypes.StorageInterface
+func (storage *MapStorage) UrlsExist(urls []string) ([]*storageTypes.UrlRecord, []string) {
+	found := make([]*storageTypes.UrlRecord, 0)
+	missing := make([]string, 0)
+	for _, url := range urls {
+		if record, ok := storage.byUrlsIndex[url]; ok {
+			found = append(found, record)
+		} else {
+			missing = append(missing, url)
+		}
+	}
+
+	return found, missing
 }
