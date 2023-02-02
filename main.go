@@ -19,7 +19,7 @@ func main() {
 	explorerStateController := make(chan frontierExplorer.State)
 
 	// Create context to pass to other processes
-	ctx := context.Context{Storage: storagePtr, FrontierStateManager: explorerStateController}
+	ctx := context.Context{Storage: storagePtr, FrontierStateManager: &explorerStateController}
 
 	mux := http.NewServeMux()
 
@@ -28,14 +28,21 @@ func main() {
 	urlsToExploreChannel := make(chan string, 10)
 
 	// Create a goroutine in charge of "exploring" the urls that have not been charted in the storage yet
-	go frontierExplorer.FrontierExplorer(ctx.Storage, urlsToExploreChannel, explorerStateController)
+	go frontierExplorer.FrontierExplorer(ctx.Storage, &urlsToExploreChannel, &explorerStateController)
 
 	// Could scale up here, by creating several goroutine that consume from the urlsToExploreChannel channel
-	go parser.ParsePageUrls(ctx, urlsToExploreChannel)
+	go parser.ParsePageUrls(ctx, &urlsToExploreChannel)
 
 	// Wrap the handle functions to pass a context manager containing global settings, storage, etc... to endpoints
 	mux.HandleFunc("/seed", func(w http.ResponseWriter, r *http.Request) {
 		endpoints.Seed(ctx, w, r)
+	})
+	mux.HandleFunc("/explorer", func(w http.ResponseWriter, r *http.Request) {
+		endpoints.ExplorerRoot(ctx, w, r)
+	})
+
+	mux.HandleFunc("/explorer/state", func(w http.ResponseWriter, r *http.Request) {
+		endpoints.ExplorerState(ctx, w, r)
 	})
 
 	log.Fatal(http.ListenAndServe("localhost:8000", mux))

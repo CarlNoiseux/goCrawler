@@ -3,6 +3,7 @@ package frontierExplorer
 import (
 	"goCrawler/storage/storageTypes"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -12,29 +13,59 @@ const (
 	Stop State = "stop"
 	Run  State = "run"
 	Quit State = "quit"
+	Ping State = "ping"
 
 	maxUrlsToExplore int = 10
 )
 
-func FrontierExplorer(store *storageTypes.StorageInterface, urlsToExploreChannel chan string, stateChannel chan State) {
+var strToState = map[string]State{
+	string(Stop): Stop,
+	string(Run):  Run,
+	string(Quit): Quit,
+	string(Ping): Ping,
+}
+
+func GetStateFromString(state string) (State, bool) {
+	typedState, ok := strToState[strings.Trim(strings.ToLower(state), " ")]
+
+	return typedState, ok
+}
+
+func GetPossibleStates() []string {
+	states := make([]string, len(strToState))
+	i := 0
+	for k := range strToState {
+		states[i] = k
+		i++
+	}
+
+	return states
+}
+
+func FrontierExplorer(store *storageTypes.StorageInterface, urlsToExploreChannel *chan string, stateChannel *chan State) {
 	urlsToExplore := make([]*storageTypes.UrlRecord, 0)
-	currentState := Run
+	previousState, currentState := Run, Run
 
 	for {
 		select {
-		case <-stateChannel:
-			currentState = <-stateChannel
+		case newState := <-*stateChannel:
+			previousState = currentState
+			currentState = newState
 			log.Printf("new explorer state: %s", currentState)
 		default:
 			// Do other stuff
 			switch currentState {
+			case Ping:
+				*stateChannel <- previousState
+				currentState = previousState
+
 			case Run:
 				if len(urlsToExplore) == 0 {
 					urlsToExplore = (*store).GetUrlsByStatus(storageTypes.Uncharted, maxUrlsToExplore)
 				}
 
 				if len(urlsToExplore) > 0 {
-					urlsToExploreChannel <- urlsToExplore[0].Url
+					*urlsToExploreChannel <- urlsToExplore[0].Url
 					(*store).UpdateUrlStatus(urlsToExplore[0].Url, storageTypes.Charting)
 
 					urlsToExplore = urlsToExplore[1:]

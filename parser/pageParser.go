@@ -11,9 +11,9 @@ import (
 	//"goCrawler/storage/storageTypes"
 )
 
-func ParsePageUrls(ctx context.Context, urls chan string) {
+func ParsePageUrls(ctx context.Context, urls *chan string) {
 	for {
-		url, ok := <-urls
+		url, ok := <-*urls
 		if !ok {
 			log.Println("urls channel closed, terminating parser goroutine")
 			return
@@ -24,14 +24,14 @@ func ParsePageUrls(ctx context.Context, urls chan string) {
 }
 
 func parsePageUrl(ctx context.Context, url string) {
+	// Manage panics, if we crash on a given page, crawler should still have robustness to stay alive and resume on other pages
+	// Simply tag that page as unchartable in storage. In a true project we could then manage those specifically.
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Recovered a panic in parsePageUrl", r)
 			(*ctx.Storage).UpdateUrlStatus(url, storageTypes.Unchartable)
 		}
 	}()
-
-	panic("whatever")
 
 	log.Printf("parsing url: %s", url)
 

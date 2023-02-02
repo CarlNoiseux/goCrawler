@@ -7,5 +7,5 @@ import (
 
 type Context struct {
 	Storage              *storageTypes.StorageInterface
-	FrontierStateManager chan frontierExplorer.State
+	FrontierStateManager *chan frontierExplorer.State
 }
