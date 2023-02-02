@@ -45,8 +45,8 @@ func main() {
 	})
 
 	mux.HandleFunc("/metrics", endpoints.MetricsRoot)
-	mux.HandleFunc("/metrics/state", func(w http.ResponseWriter, r *http.Request) {
-		endpoints.ExplorerState(ctx, w, r)
+	mux.HandleFunc("/metrics/counts", func(w http.ResponseWriter, r *http.Request) {
+		endpoints.MetricsCounts(ctx, w, r)
 	})
 
 	log.Fatal(http.ListenAndServe("localhost:8000", mux))

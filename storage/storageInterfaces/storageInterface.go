@@ -20,4 +20,7 @@ type StorageInterface interface {
 
 	// UrlsExist method to check if some urls already exist within the storage
 	UrlsExist(urls []string) (found []*storage.UrlRecord, missing []string)
+
+	// Count the number of urls for given statuses in the storage
+	Count(statuses ...storage.ExplorationStatus) int
 }

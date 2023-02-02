@@ -131,3 +131,22 @@ func (storagePtr *MapStorage) UrlsExist(urls []string) ([]*storage.UrlRecord, []
 
 	return found, missing
 }
+
+func (storagePtr *MapStorage) Count(statuses ...storage.ExplorationStatus) int {
+	count := 0
+
+	_statuses := make([]storage.ExplorationStatus, 0)
+	if len(statuses) > 0 {
+		for _, status := range statuses {
+			_statuses = append(_statuses, status)
+		}
+	} else {
+		_statuses = storage.GetPossibleExplorationStatuses()
+	}
+
+	for k := range storagePtr.byStatusesIndex {
+		count += len(storagePtr.byStatusesIndex[k])
+	}
+
+	return count
+}
