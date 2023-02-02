@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 	"goCrawler/context"
-	"goCrawler/storage/storageTypes"
+	"goCrawler/storage"
 	"golang.org/x/net/html"
 	"log"
 	"net/http"
@@ -29,7 +29,7 @@ func parsePageUrl(ctx context.Context, url string) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Recovered a panic in parsePageUrl", r)
-			(*ctx.Storage).UpdateUrlStatus(url, storageTypes.Unchartable)
+			(*ctx.Storage).UpdateUrlStatus(url, storage.Unchartable)
 		}
 	}()
 
@@ -37,7 +37,7 @@ func parsePageUrl(ctx context.Context, url string) {
 
 	resp, err := retrievePage(url)
 	if err != nil {
-		(*ctx.Storage).UpdateUrlsStatuses([]string{url}, storageTypes.Charted)
+		(*ctx.Storage).UpdateUrlsStatuses([]string{url}, storage.Charted)
 		return
 	}
 	defer func() {
@@ -62,9 +62,9 @@ func parsePageUrl(ctx context.Context, url string) {
 
 	// Add links to storage
 	for _, foundUrl := range missing {
-		(*ctx.Storage).AddUrl(foundUrl, storageTypes.Uncharted)
+		(*ctx.Storage).AddUrl(foundUrl, storage.Uncharted)
 	}
-	(*ctx.Storage).UpdateUrlStatus(url, storageTypes.Charted)
+	(*ctx.Storage).UpdateUrlStatus(url, storage.Charted)
 }
 
 func retrievePage(url string) (*http.Response, error) {

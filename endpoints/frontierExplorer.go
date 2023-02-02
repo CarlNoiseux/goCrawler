@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func ExplorerRoot(_ context.Context, writer http.ResponseWriter, _ *http.Request) {
+func ExplorerRoot(writer http.ResponseWriter, _ *http.Request) {
 
 	fmt.Fprintf(
 		writer,

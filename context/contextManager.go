@@ -2,10 +2,10 @@ package context
 
 import (
 	"goCrawler/frontierExplorer"
-	"goCrawler/storage/storageTypes"
+	"goCrawler/storage/storageInterfaces"
 )
 
 type Context struct {
-	Storage              *storageTypes.StorageInterface
+	Storage              *storageInterfaces.StorageInterface
 	FrontierStateManager *chan frontierExplorer.State
 }

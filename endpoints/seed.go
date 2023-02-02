@@ -3,7 +3,7 @@ package endpoints
 import (
 	"fmt"
 	"goCrawler/context"
-	"goCrawler/storage/storageTypes"
+	"goCrawler/storage"
 	"net/http"
 )
 
@@ -15,7 +15,7 @@ func Seed(ctx context.Context, writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	(*ctx.Storage).AddUrl(url, storageTypes.Uncharted)
+	(*ctx.Storage).AddUrl(url, storage.Uncharted)
 
 	message := fmt.Sprintf("Added %s url to uncharted frontier.", url)
 

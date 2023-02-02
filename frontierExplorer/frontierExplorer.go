@@ -1,7 +1,8 @@
 package frontierExplorer
 
 import (
-	"goCrawler/storage/storageTypes"
+	"goCrawler/storage"
+	"goCrawler/storage/storageInterfaces"
 	"log"
 	"strings"
 	"time"
@@ -42,8 +43,8 @@ func GetPossibleStates() []string {
 	return states
 }
 
-func FrontierExplorer(store *storageTypes.StorageInterface, urlsToExploreChannel *chan string, stateChannel *chan State) {
-	urlsToExplore := make([]*storageTypes.UrlRecord, 0)
+func FrontierExplorer(store *storageInterfaces.StorageInterface, urlsToExploreChannel *chan string, stateChannel *chan State) {
+	urlsToExplore := make([]*storage.UrlRecord, 0)
 	previousState, currentState := Run, Run
 
 	for {
@@ -61,12 +62,12 @@ func FrontierExplorer(store *storageTypes.StorageInterface, urlsToExploreChannel
 
 			case Run:
 				if len(urlsToExplore) == 0 {
-					urlsToExplore = (*store).GetUrlsByStatus(storageTypes.Uncharted, maxUrlsToExplore)
+					urlsToExplore = (*store).GetUrlsByStatus(storage.Uncharted, maxUrlsToExplore)
 				}
 
 				if len(urlsToExplore) > 0 {
 					*urlsToExploreChannel <- urlsToExplore[0].Url
-					(*store).UpdateUrlStatus(urlsToExplore[0].Url, storageTypes.Charting)
+					(*store).UpdateUrlStatus(urlsToExplore[0].Url, storage.Charting)
 
 					urlsToExplore = urlsToExplore[1:]
 				} else {

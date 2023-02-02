@@ -4,6 +4,7 @@
 package main
 
 import (
+	"goCrawler/storage/storageInterfaces"
 	"log"
 	"net/http"
 
@@ -11,11 +12,10 @@ import (
 	"goCrawler/endpoints"
 	"goCrawler/frontierExplorer"
 	"goCrawler/parser"
-	"goCrawler/storage"
 )
 
 func main() {
-	storagePtr := storage.GetStoragePtr()
+	storagePtr := storageInterfaces.GetStoragePtr()
 	explorerStateController := make(chan frontierExplorer.State)
 
 	// Create context to pass to other processes
@@ -33,15 +33,19 @@ func main() {
 	// Could scale up here, by creating several goroutine that consume from the urlsToExploreChannel channel
 	go parser.ParsePageUrls(ctx, &urlsToExploreChannel)
 
+	//Declare REST endpoints for the API
 	// Wrap the handle functions to pass a context manager containing global settings, storage, etc... to endpoints
 	mux.HandleFunc("/seed", func(w http.ResponseWriter, r *http.Request) {
 		endpoints.Seed(ctx, w, r)
 	})
-	mux.HandleFunc("/explorer", func(w http.ResponseWriter, r *http.Request) {
-		endpoints.ExplorerRoot(ctx, w, r)
+
+	mux.HandleFunc("/explorer", endpoints.ExplorerRoot)
+	mux.HandleFunc("/explorer/state", func(w http.ResponseWriter, r *http.Request) {
+		endpoints.ExplorerState(ctx, w, r)
 	})
 
-	mux.HandleFunc("/explorer/state", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/metrics", endpoints.MetricsRoot)
+	mux.HandleFunc("/metrics/state", func(w http.ResponseWriter, r *http.Request) {
 		endpoints.ExplorerState(ctx, w, r)
 	})
 
