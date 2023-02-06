@@ -15,7 +15,7 @@ func getMapStorage() *MapStorage {
 	}
 }
 
-func TestAddRetrieveUrlFromStorage(t *testing.T) {
+func TestAddRetrieveUrlFromMapStorage(t *testing.T) {
 	/*Simple test that inserts a URL into storage and then tests that it can be correctly retrieved */
 	storagePtr := getMapStorage()
 
@@ -42,7 +42,7 @@ func TestAddRetrieveUrlFromStorage(t *testing.T) {
 	}
 }
 
-func TestCountUrlsFromStorage(t *testing.T) {
+func TestCountUrlsFromMapStorage(t *testing.T) {
 	storagePtr := getMapStorage()
 
 	if storagePtr.Count() != 0 {

@@ -32,7 +32,6 @@ func (storagePtr *MapStorage) AddUrl(url string, explorationStatus storage.Explo
 	storagePtr.mutex.Lock()
 
 	record := storage.UrlRecord{Url: url, Status: explorationStatus}
-	//storage.urls = append(storage.urls, record)
 
 	storagePtr.byUrlsIndex[url] = &record
 
