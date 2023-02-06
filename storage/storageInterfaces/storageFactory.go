@@ -12,7 +12,6 @@ func GetStoragePtr() *StorageInterface {
 	var storageI StorageInterface
 
 	storageI = &MapStorage{
-		//urls:            make([]storageTypes.UrlRecord, 0),
 		byUrlsIndex:     map[string]*storage.UrlRecord{},
 		byStatusesIndex: map[storage.ExplorationStatus]urlSet{},
 		mutex:           &sync.Mutex{},

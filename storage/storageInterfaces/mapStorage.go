@@ -57,12 +57,14 @@ func (storagePtr *MapStorage) GetUrlsByStatus(explorationStatus storage.Explorat
 
 	// This will do non-deterministic access, mirroring somewhat what would happen if we queried a database, supposing
 	// indices change through time
+
 	records := make([]*storage.UrlRecord, numberOfUrls)
+	index := 0
 	for k := range storagePtr.byStatusesIndex[explorationStatus] {
 		record := storagePtr.byUrlsIndex[k]
-		records = append(records, record)
-		numberOfUrls -= 1
-		if numberOfUrls == 0 {
+		records[index] = record
+		index += 1
+		if numberOfUrls == index {
 			break
 		}
 	}
@@ -144,8 +146,8 @@ func (storagePtr *MapStorage) Count(statuses ...storage.ExplorationStatus) int {
 		_statuses = storage.GetPossibleExplorationStatuses()
 	}
 
-	for k := range storagePtr.byStatusesIndex {
-		count += len(storagePtr.byStatusesIndex[k])
+	for _, storageType := range _statuses {
+		count += len(storagePtr.byStatusesIndex[storageType])
 	}
 
 	return count
