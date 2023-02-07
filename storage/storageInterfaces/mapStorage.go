@@ -74,11 +74,10 @@ func (storagePtr *MapStorage) GetUrlsByStatus(explorationStatus storage.Explorat
 }
 
 // UpdateUrlsStatuses see storageTypes.StorageInterface
-func (storagePtr *MapStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus storage.ExplorationStatus) ([]*storage.UrlRecord, []string) {
+func (storagePtr *MapStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus storage.ExplorationStatus) error {
 	storagePtr.mutex.Lock()
 
-	missing := make([]string, 0)
-	updated := make([]*storage.UrlRecord, len(urls))
+	var err error
 	for _, url := range urls {
 		urlRecord, ok := storagePtr.byUrlsIndex[url]
 		if ok {
@@ -93,29 +92,19 @@ func (storagePtr *MapStorage) UpdateUrlsStatuses(urls []string, newExplorationSt
 			// Update records with new status
 			urlRecord.Status = newExplorationStatus
 			storagePtr.byUrlsIndex[url] = urlRecord
-
-			updated = append(updated, urlRecord)
-
 		} else {
-			// Accumulate missing url
-			missing = append(missing, url)
+			err = errors.New("not all specified urls to update are found in storage")
 		}
 	}
 
 	storagePtr.mutex.Unlock()
 
-	return updated, missing
+	return err
 }
 
 // UpdateUrlStatus see storageTypes.StorageInterface
-func (storagePtr *MapStorage) UpdateUrlStatus(url string, newExplorationStatus storage.ExplorationStatus) (*storage.UrlRecord, error) {
-	records, err := storagePtr.UpdateUrlsStatuses([]string{url}, newExplorationStatus)
-
-	if len(err) > 0 {
-		return nil, errors.New("could not find requested url in storage")
-	}
-
-	return records[0], nil
+func (storagePtr *MapStorage) UpdateUrlStatus(url string, newExplorationStatus storage.ExplorationStatus) error {
+	return storagePtr.UpdateUrlsStatuses([]string{url}, newExplorationStatus)
 }
 
 // UrlsExist see storageTypes.StorageInterface

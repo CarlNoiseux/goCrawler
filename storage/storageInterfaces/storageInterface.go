@@ -13,10 +13,10 @@ type StorageInterface interface {
 	GetUrlsByStatus(explorationStatus storage.ExplorationStatus, limit ...int) []*storage.UrlRecord
 
 	// UpdateUrlsStatuses interface method to update status of a given list of urls
-	UpdateUrlsStatuses(urls []string, newExplorationStatus storage.ExplorationStatus) ([]*storage.UrlRecord, []string)
+	UpdateUrlsStatuses(urls []string, newExplorationStatus storage.ExplorationStatus) error
 
 	// UpdateUrlStatus interface method to update status of a given list of urls
-	UpdateUrlStatus(urls string, newExplorationStatus storage.ExplorationStatus) (*storage.UrlRecord, error)
+	UpdateUrlStatus(urls string, newExplorationStatus storage.ExplorationStatus) error
 
 	// UrlsExist method to check if some urls already exist within the storage
 	UrlsExist(urls []string) (found []*storage.UrlRecord, missing []string)

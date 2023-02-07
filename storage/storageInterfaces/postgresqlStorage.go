@@ -5,7 +5,6 @@ package storageInterfaces
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
 	"goCrawler/storage"
@@ -84,6 +83,16 @@ func (storagePtr *PostgresqlStorage) queryStatement(statement string, args ...an
 	return records
 }
 
+func (storagePtr *PostgresqlStorage) unpackListArgumentAgainstInjection(listArgument []string) string {
+	accumulator := ""
+	for index := range listArgument[:len(listArgument)-1] {
+		accumulator += fmt.Sprintf("$%d, ", index+1)
+	}
+	accumulator += fmt.Sprintf("$%d", len(listArgument))
+
+	return accumulator
+}
+
 // AddUrl see storageTypes.StorageInterface
 func (storagePtr *PostgresqlStorage) AddUrl(url string, explorationStatus storage.ExplorationStatus) (*storage.UrlRecord, bool) {
 	storagePtr.executeStatement(`INSERT INTO frontier (url, status) VALUES ($1, $2)`, url, string(explorationStatus))
@@ -117,69 +126,43 @@ func (storagePtr *PostgresqlStorage) GetUrlsByStatus(explorationStatus storage.E
 }
 
 // UpdateUrlsStatuses see storageTypes.StorageInterface
-func (storagePtr *PostgresqlStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus storage.ExplorationStatus) ([]*storage.UrlRecord, []string) {
-	accumulator := ""
-	for index := range urls[:len(urls)-1] {
-		accumulator += fmt.Sprintf("$%d, ", index+1)
-	}
-	accumulator += fmt.Sprintf("$%d", len(urls))
+func (storagePtr *PostgresqlStorage) UpdateUrlsStatuses(urls []string, newExplorationStatus storage.ExplorationStatus) error {
+	injectionProtection := storagePtr.unpackListArgumentAgainstInjection(urls)
 
-	statement2 := "UPDATE frontier SET status = '%s' WHERE url IN (%s)"
-
-	statement := fmt.Sprintf("SELECT * FROM frontier WHERE url IN (%s)", accumulator)
+	statement := fmt.Sprintf("UPDATE frontier SET status = '%s' WHERE url IN (%s)", string(newExplorationStatus), injectionProtection)
 
 	urlsAny := make([]interface{}, len(urls))
-	for i, v := range urls {
-		urlsAny[i] = v
-	}
-
-	updated := storagePtr.queryStatement(statement, urlsAny...)
-	updatedSet := map[string]bool{}
-	for _, key := range updated {
-		updatedSet[key.Url] = true
-	}
-
-	missing := make([]string, 0)
-	for _, url := range urls {
-		if _, ok := updatedSet[url]; ok {
-			continue
+	for i, url := range urls {
+		urlsAny[i] = url
+		if recordPtr, ok := storagePtr.inMemoryCache[url]; ok {
+			recordPtr.Status = newExplorationStatus
 		}
-
-		missing = append(missing, url)
 	}
 
-	return updated, missing
+	err := storagePtr.executeStatement(statement, urlsAny...)
+
+	return err
 }
 
 // UpdateUrlStatus see storageTypes.StorageInterface
-func (storagePtr *PostgresqlStorage) UpdateUrlStatus(url string, newExplorationStatus storage.ExplorationStatus) (*storage.UrlRecord, error) {
-	records, err := storagePtr.UpdateUrlsStatuses([]string{url}, newExplorationStatus)
-
-	if len(err) > 0 {
-		return nil, errors.New("could not find requested url in storage")
-	}
-
-	return records[0], nil
+func (storagePtr *PostgresqlStorage) UpdateUrlStatus(url string, newExplorationStatus storage.ExplorationStatus) error {
+	return storagePtr.UpdateUrlsStatuses([]string{url}, newExplorationStatus)
 }
 
 // UrlsExist see storageTypes.StorageInterface
 func (storagePtr *PostgresqlStorage) UrlsExist(urls []string) ([]*storage.UrlRecord, []string) {
-	accumulator := ""
-	for index := range urls[:len(urls)-1] {
-		accumulator += fmt.Sprintf("$%d, ", index+1)
-	}
-	accumulator += fmt.Sprintf("$%d", len(urls))
+	injectionProtection := storagePtr.unpackListArgumentAgainstInjection(urls)
 
-	statement := fmt.Sprintf("SELECT * FROM frontier WHERE url IN (%s)", accumulator)
+	statement := fmt.Sprintf("SELECT * FROM frontier WHERE url IN (%s)", injectionProtection)
 
 	urlsAny := make([]interface{}, len(urls))
 	for i, v := range urls {
 		urlsAny[i] = v
 	}
 
-	updated := storagePtr.queryStatement(statement, urlsAny...)
+	records := storagePtr.queryStatement(statement, urlsAny...)
 	updatedSet := map[string]bool{}
-	for _, key := range updated {
+	for _, key := range records {
 		updatedSet[key.Url] = true
 	}
 
@@ -192,26 +175,34 @@ func (storagePtr *PostgresqlStorage) UrlsExist(urls []string) ([]*storage.UrlRec
 		missing = append(missing, url)
 	}
 
-	return found, missing
+	return records, missing
 }
 
-//func (storagePtr *PostgresqlStorage) Count(statuses ...storage.ExplorationStatus) int {
-//	count := 0
-//
-//	_statuses := make([]storage.ExplorationStatus, 0)
-//	if len(statuses) > 0 {
-//		for _, status := range statuses {
-//			_statuses = append(_statuses, status)
-//		}
-//	} else {
-//		_statuses = storage.GetPossibleExplorationStatuses()
-//	}
-//
-//	for _, storageType := range _statuses {
-//		count += len(storagePtr.byStatusesIndex[storageType])
-//	}
-//
-//	return count
-//}
+func (storagePtr *PostgresqlStorage) Count(statuses ...storage.ExplorationStatus) int {
+	statusesStr := make([]string, 0)
+	if len(statuses) > 0 {
+		for _, status := range statuses {
+			statusesStr = append(statusesStr, string(status))
+		}
+	} else {
+		for _, status := range storage.GetPossibleExplorationStatusesStrings() {
+			statusesStr = append(statusesStr, string(status))
+		}
+	}
 
-// TODO: hook to storageFactory
+	_statuses := make([]interface{}, len(statusesStr))
+	for i, statusStr := range statusesStr {
+		_statuses[i] = statusStr
+	}
+
+	injectionProtection := storagePtr.unpackListArgumentAgainstInjection(statusesStr)
+	statement := fmt.Sprintf(`SELECT COUNT(*) FROM frontier WHERE status IN (%s)`, injectionProtection)
+
+	storagePtr.getDatabaseConnection()
+
+	var count int
+	row := storagePtr.dbEngine.QueryRow(statement, _statuses...)
+	row.Scan(&count)
+
+	return count
+}
